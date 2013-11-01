@@ -105,12 +105,14 @@ def main():
  
     try:
         cmdargv = shlex.split(orig_cmd)
-    except ValueError, e:
+
+    # Changed to "as" here for Python 3.3 compatibility
+    except ValueError as e:
         sys.stderr.write('Illegal command "%s": %s\n' % (orig_cmd, e))
         sys.exit(255)
 
     if cmdargv[:2] == ['hg', '-R'] and cmdargv[3:] == ['serve', '--stdio']:
-	try:
+        try:
 
             # Now we need to extract the repository name (what is in the conf file)
             repository = cmdargv[2].replace(os.sep,'',1)
