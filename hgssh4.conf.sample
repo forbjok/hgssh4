@@ -7,11 +7,13 @@ init = @group1, user4
 
 [defaults]
 location = repos/$r
+default = r
 @group1 = rw
 @group2 = r
 
 [r:myrepo1]
 location = folder/to/repos/myrepo1
+default = r
 @group1 = rw
 user3 = r
 user4 = rw

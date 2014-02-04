@@ -12,81 +12,6 @@
 #
 # hgssh4.py - modified by <chaubner@chrishaubner.com>
 #
-"""
-hgssh4.py - a wrapper for ssh access to mercurial repositories
-
-To be used in ~/.ssh/authorized_keys with the "command" option, see sshd(8):
-command="hgssh4 username /path/to/acl_file" ssh-rsa ...
-(probably together with these other useful options:
-no-port-forwarding,no-X11-forwarding,no-agent-forwarding)
-
-This allows pull/push over ssh from/to repositories based on the username given as arguments with the ssh command.
-
-If all your repositories are subdirectories of a common directory, you can
-allow shorter paths with:
-command="cd path/to/my/repositories && hgssh4 username /path/to/acl_file"
-
-*******************
-ACL_file format:
-
-[groups]
-group1 = user1, user2
-group2 = user3, user4, user5
-
-[system]
-init = @group1, user4 # Specify users and/or groups who are allowed to create repositories on the server
-
-[defaults] # The 'defaults' section will be checked if no location or user permissions are found in the repository section
-location = repos/$r # The placeholder "$r" will be replaced with the name of the requested repository
-@group1 = rw
-@group2 = r
-
-[r:myrepo1]
-location = relative/path/to/repo #This is relative to the cwd (Current working directory) and cwd will default to ~/ unless changed using 'cd /path/to/repo &&' before calling the python script.
-@group2 = r
-user1 = rw #Read/Write access
-user2 = r  #Read only access
-
-[r:myrepo2]
-location = relative/path/to/repo
-@group1 = rw
-user1 = r
-user4 = r
-user3 = rw
-
-
-#Real example with 'repos' directory in the ~/ directory of the user (i.e. hg). User would check out as ssh://hg@my.server/project1:
-[r:project1]
-location = repos/customer1/project1
-user1 = rw
-user2 = r
-
-
-*********************
-If the username provided in authorized_keys does not exist in the ACL file, or if it is set to anything
-other than 'read' or 'write' (even if blank), then the access will be denied.
-
-NOTE: The users defined in the ACL file DO NOT need to exist on the server being accessed. They simply need to match
-      the entry that is provided in the command in the authorized_keys file for that user.
-
-NOTE: The actual name of the repository folder in the location DOES NOT need to match the name in the [] section of the ACL file.
-Example:
-[r:repo1]
-location = /path/to/repos/anothername
-user1 = r
-user2 = rw
-
-This script allows the use of 'short/friendly' names in access/config:
-Example: ssh://hg@hg.myserver.com/myrepo1
-
-This repository could actually live under ~/relative/path/to/repos/myrepo1. This ACL file serves as
-a mapping from friendly name to actual location. This removes the need to defined multiple repo definitions
-on the "command" of the ssh key as in hgssh, and also removes the need to redefine repos per user as in hgssh2.py. 
-This configuration allows one definition of the repository and one line per user to deny/grant access. This is very similar
-to how SVN grants access controls.
-
-
-"""
 
 # Enable importing on demand to reduce startup time
 # Please ensure the PYTHONPATH is correct to allow the site-packages
@@ -155,6 +80,10 @@ def get_permission(repository, user, conf):
                             # User was found in this group, add permissions from this group
                             options.setdefault('perms', set()).update(set(p))
 
+                    # If no specific user or group permissions were found, look for "unspecified user" permissions (* =)
+                    if 'perms' not in options and config.has_option(section, "default"):
+                        options['perms'] = set(config.get(section, "default"))
+
     # First check for values in the repository's section (if it exists),
     # then check the "defaults" section for the remaining unspecified values
     check_section(reposection, repooptions)
@@ -194,13 +123,13 @@ def main():
         # This is the reason we are using a try in case this key does not exist.
         # 'location' param under repository section contains the relative or absolute path
         # to the repository on the file system from the current working
-        # directory which can be changed in the authorized_keys 
+        # directory which can be changed in the authorized_keys
         path = opts['location'].replace('$r', repository)
 
         # Get the path of the repository to be used with hg commands below.
         # This is the translation between the section name in the conf file and
         # the location param that points to the actual directory on the file system
-        # By default, this uses cwd (Current working directory) and can be changed in the 
+        # By default, this uses cwd (Current working directory) and can be changed in the
         # authorized_keys file in the command section by using 'cd /path/to/start/from && '
         # as the first part of the command string before calling this script.
         return opts, os.path.normpath(os.path.join(cwd, os.path.expanduser(path)))
@@ -208,7 +137,7 @@ def main():
     if cmdargv[:2] == ['hg', '-R'] and cmdargv[3:] == ['serve', '--stdio']:
         opts, repo = get_repository(cmdargv[2])
 
-        # We will try and get the username out of the config, if it is not present, we exit! 
+        # We will try and get the username out of the config, if it is not present, we exit!
         # We will also check to make sure the access is set to read or write. If Not, goodbye!
         if 'perms' not in opts:
             sys.stderr.write('Illegal Repository "%s"\n' % repo)
