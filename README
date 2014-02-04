@@ -1,17 +1,18 @@
-hgssh3
+hgssh4
 -------
 
 A python script to control ssh access to mercurial repositories.
 
 modified from hg-ssh (http://www.selenic.com/repo/hg-stable/raw-file/tip/contrib/hg-ssh)
 and hgssh2.py (https://github.com/dengzhp/hgssh2)
+and hgssh3.py (https://bitbucket.org/painfulcranium/hgssh3)
 
-See https://bitbucket.org/painfulcranium/hgssh3 for more information.
+See https://bitbucket.org/forbjok/hgssh4 for more information.
 
 How to
 -------
 
-copy hgssh3.py to your $PATH (e.g./usr/local/bin).
+copy hgssh4.py to your $PATH (e.g./usr/local/bin).
 
 (We assume your user being created is named 'hg')
 
@@ -26,22 +27,22 @@ you want to store your repositories elsewhere, you can do one of the following:
 	   if the top level was in /usr/local/repos, create a symlink in /home/hg to /usr/local/repos and update
 	   the confuguration file as necessary
 
-Create a config file at `/home/hg/hgssh3.conf`:
+Create a config file at `/home/hg/hgssh4.conf`:
     
-    [reponame]
+    [r:reponame]
     location = repos/reponame
-    user1 = read     
-    user2 = write    
+    user1 = r     
+    user2 = rw    
     
-    [reponame2]
+    [r:reponame2]
     location = repos/reponame2
-    user1 = write
+    user1 = rw
 
 Add a new entry to ``/home/hg/.ssh/authorized_keys``
     
     NOTE: USERNAME in this example would be user1 or user2
 	
-    command="hgssh3.py USERNAME ~/hgssh3.conf",no-port-forwarding,no-X11-forwarding,no-agent-forwarding ssh-rsa your_ssh_rsa_public_key
+    command="hgssh4.py USERNAME ~/hgssh4.conf",no-port-forwarding,no-X11-forwarding,no-agent-forwarding ssh-rsa your_ssh_rsa_public_key
 
 Create the repositories:
 
@@ -55,7 +56,7 @@ Now you can access (only) these repositories using your ssh key:
 NOTES:
 
     If the username provided in authorized_keys does not exist in the ACL file, or if it is set to anything
-    other than 'read' or 'write' (even if blank), then the access will be denied.
+    other than 'r' or 'rw' (even if blank), then the access will be denied.
     *****
 
     The users defined in the ACL file DO NOT need to exist on the server being accessed. They simply need to match
@@ -63,10 +64,10 @@ NOTES:
     *****
 
     The actual name of the repository folder in the location DOES NOT need to match the name in the [] section of the ACL file.
-    [repo1]
-    location=/path/to/repos/anothername
-    user1=read
-    user2=write
+    [r:repo1]
+    location = /path/to/repos/anothername
+    user1 = r
+    user2 = rw
 
     SSH to run: ssh://hg@example.com/repo1
     *****
