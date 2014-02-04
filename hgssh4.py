@@ -169,8 +169,6 @@ def main():
 
     # Get the original SSH Command sent through. The repo should be the item after the connect string
     orig_cmd = os.getenv('SSH_ORIGINAL_COMMAND', '?')
-    with open("/home/hg/kork.txt", "a+") as fp:
-        fp.write(orig_cmd + "\n")
 
     try:
         cmdargv = shlex.split(orig_cmd)
