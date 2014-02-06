@@ -9,77 +9,89 @@ and hgssh3.py (https://bitbucket.org/painfulcranium/hgssh3)
 
 See https://bitbucket.org/forbjok/hgssh4 for more information.
 
-How to
--------
+How to use
+-----------
 
-copy hgssh4.py to your $PATH (e.g./usr/local/bin).
+These installation instructions were written for Ubuntu, but it should be more or less the same
+in any Debian-based distro.
 
-(We assume your user being created is named 'hg')
+1. Create a new user:
+	$ sudo adduser --system --shell /bin/bash --group --disabled-password hg
 
-Create a new user `hg` with home directory `/home/hg`, all your repositories will go here. If 
-you want to store your repositories elsewhere, you can do one of the following:
+2. Switch to the user:
+	$ sudo su - hg
 
-	1. Create your directory structure somewhere on your filesystem and ensure ownership
-	   is given to hg user and hg group. Then create a symlink in the user home directory
-	   to the top level folder of the repository location.
-	   
-	2. Use 'cd path/to/toplevel/repodir &&...' in your SSH command before calling this script. For example,
-	   if the top level was in /usr/local/repos, create a symlink in /home/hg to /usr/local/repos and update
-	   the confuguration file as necessary
+2. Clone the hgssh4 repository:
+	$ hg clone https://forbjok@bitbucket.org/forbjok/hgssh4
 
-Create a config file at `/home/hg/hgssh4.conf`:
-    
-    [r:reponame]
-    location = repos/reponame
-    user1 = r     
-    user2 = rw    
-    
-    [r:reponame2]
-    location = repos/reponame2
-    user1 = rw
-
-Add a new entry to ``/home/hg/.ssh/authorized_keys``
-    
-    NOTE: USERNAME in this example would be user1 or user2
+3. Run the setup script:
+	$ hgssh4/setup-hgssh4.py
 	
-    command="hgssh4.py USERNAME ~/hgssh4.conf",no-port-forwarding,no-X11-forwarding,no-agent-forwarding ssh-rsa your_ssh_rsa_public_key
+	This will create a configuration repository in ~/repositories/hgssh4-admin
+	and pre-populate it with basic configuration files.
 
-Create the repositories:
+4. In ~/repositories/hgssh4-admin/keys which should be empty except for a blank dummy file,
+	create a file <username>.pub, where <username> is the username you want to be represented by
+	in the HGSSH4 configuration files, containing your SSH public key.
+	
+	If you don't have one, it can be generated using ssh-keygen on most *nix systems or PuTTYgen
+	on windows.
 
-    cd /home/hg/repos && hg init reponame && hg  init reponame2
+5. Open up ~/repositories/hgssh4-admin/main.conf in the editor of your choice
+	and add your <username> to the admin group:
+	
+	[groups]
+	admins = <username>
+	
+	This will give your user full access to all repositories by default. (but of course, that can be changed)
 
-Now you can access (only) these repositories using your ssh key:
+6. Commit the changes to the admin repository:
+	$ cd ~/repositories/hgssh4-admin/
+	$ hg commit -A -m "added <username>" -u <username>
+	
+	This will automatically regenerate your ~/.ssh/authorized_keys file to contain the key placed in the keys directory.
 
-    ssh://hg@example.com/reponame  (readonly to user1, read/write to user2)
-    ssh://hg@example.com/reponame2 (read/write to user1only)
-    
-NOTES:
+7. You should now be able to clone the admin repository remotely by running
+	$ hg clone ssh://hg@<server-ip>/hgssh4-admin
 
-    If the username provided in authorized_keys does not exist in the ACL file, or if it is set to anything
-    other than 'r' or 'rw' (even if blank), then the access will be denied.
-    *****
+8. Add more users (if needed).
+	Create <name>.pub files for each user you want to grant access in the keys/ subdirectory of the configuration repository,
+	containing their pubkey, and/or edit the config files to specify groups or permissions.
+	
+	When done, commit all new files and push it back to the server:
+	$ hg commit -A -m "added more users" -u <username>
+	$ hg push
+	
+	Repeat this any time you want to change the configuration or add/remove user keys.
 
-    The users defined in the ACL file DO NOT need to exist on the server being accessed. They simply need to match
-    the entry that is provided in the command in the authorized_keys file for that user.
-    *****
+Configuration format:
+---------------------
 
-    The actual name of the repository folder in the location DOES NOT need to match the name in the [] section of the ACL file.
-    [r:repo1]
-    location = /path/to/repos/anothername
-    user1 = r
-    user2 = rw
+main.conf
+---------
 
-    SSH to run: ssh://hg@example.com/repo1
-    *****
+[groups]
+# Contains an entry for each group - by default only 'admin'.
+# Each group's value should be a username, or a comma-separated list of usernames of its members.
+admins = <username>
 
-    This script allows the use of 'short/friendly' names in access/config:
-    Example: ssh://hg@hg.myserver.com/myrepo1
-    *****
+[system]
+# init should be a list of usernames and/or groups (groups must be prefixed by @ to specify that they are referring to a group)
+#	of users who should be allowed to remotely create new repositories
+init = @admins
 
-    This ACL file serves as a mapping from friendly name to actual location. This removes the 
-    need to defined multiple repo definitions on the "command" of the ssh key as in hgssh, 
-    and also removes the need to redefine repos per user as in hgssh2.py. This configuration 
-    allows one definition of the repository and one line per user to deny/grant access. This is very similar
-    to how SVN grants access controls.
-    *****
+[defaults]
+# The [defaults] section contains default values that will be used as a fallback for repositories not
+#	specified in the repositories.conf file.
+# location specifies the default location of repositories that do not specify their own location.
+#	$r is a placeholder that will be replaced with the name of the repository
+location = /home/tord/repositories/$r
+# Following is a list of usernames or groups (still prefixed by @) and their permissions (r = read-only, rw = read/write)
+@admins = rw
 
+
+repositories.conf
+-----------------
+
+Should contain a section for each repository you want to assign permissions to.
+The format of each repository section is exactly the same as the [defaults] section in main.conf.
