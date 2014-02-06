@@ -7,18 +7,20 @@ BEGIN_COMMENT = "### HGSSH BEGIN ###"
 END_COMMENT = "### HGSSH END ###"
 
 def gen_akline(name, pubkey):
-    return 
+    return
 
 def main():
     hgssh_config_path = os.path.expanduser('~/.hgssh4.conf')
     hgssh_path = os.path.abspath(os.path.dirname(sys.argv[0]))
     hgssh_script_path = os.path.join(hgssh_path, 'hgssh4.py')
-    authorized_keys_path = os.path.expanduser('~/.ssh/authorized_keys')
-    
+
+    dotssh_path = os.path.expanduser('~/.ssh')
+    authorized_keys_path = os.path.join(dotssh_path, 'authorized_keys')
+
     if not os.path.isfile(hgssh_config_path):
         print "~/.hgssh4.conf not present. Run setup-hgssh4.py to set up."
         return
-    
+
     cfg = SafeConfigParser()
     cfg.optionxform = str
     cfg.read(hgssh_config_path)
@@ -26,7 +28,7 @@ def main():
     # Get admin repository path from configuration
     admin_repository_path = cfg.get('main', 'admin-repository')
     keys_path = os.path.join(admin_repository_path, "keys")
-    
+
     useraklines = []
     if os.path.isfile(authorized_keys_path):
         # Read existing authorized_keys file, skipping generated lines
@@ -69,8 +71,12 @@ def main():
                         hgssh = hgssh_script_path,
                         user = name,
                         pubkey = line)
-                    
+
                     newaklines.append(newline)
+
+    # If .ssh does not exist, create it
+    if not os.path.isdir(dotssh_path):
+        os.makedirs(dotssh_path)
 
     # Write new authorized_keys file
     with os.fdopen(os.open(authorized_keys_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600), 'w') as f:
